@@ -14,6 +14,22 @@ namespace NotArknightsMod
             NAHelper.ui.Warn(content);
         }
     }
+
+    public class ChrData {
+        public Vector3 position;
+        public void setPosition(float x, float y) {
+            position.x = x;
+            position.y = y;
+        }
+    }
+
+    static class GameObjects {
+        //public static EnemyInformation enemyInformation;
+        public static ButtonControll buttonControl; // 为什么两个l (
+        public static Plugin notArknightsMod;
+        public static ChrData chrData = new ChrData();
+        public static Enemies enemies = new Enemies();
+    }
     public static class Settings {
         public static bool Invulnerable = false;
         public static bool SuperArmor = false;
@@ -33,10 +49,10 @@ namespace NotArknightsMod
         {
             var harmony = new Harmony("tunafish2k.notarknightsmod");
             harmony.PatchAll();
-            Logger.LogInfo("awa");
         }
         private void Start()
         {
+            GameObjects.notArknightsMod = this;
             // Plugin startup logic
             //Logger.LogInfo(new Amiya_Controller().event_Roll_End);
             //GameManager.money=1000000;
@@ -44,22 +60,40 @@ namespace NotArknightsMod
         }
         public void Update()
         {
+            if (Input.GetKeyDown (KeyCode.P))
+            {
+                GameObjects.enemies.getEnemies();
+                GameObjects.enemies.printEnemies();
+            }
             if (Input.GetKeyDown (KeyCode.C))
             {
                 displayingWindow = !displayingWindow;
             }
         }
+        private void renderPosition() {
+            string coordinateText = "X: " + GameObjects.chrData.position.x.ToString("F2") + " Y: " + GameObjects.chrData.position.y.ToString("F2");
+
+            GUIStyle style = new GUIStyle(GUI.skin.label);
+            style.fontSize = 20;
+            style.normal.textColor = Color.white;
+
+            GUI.Label(new Rect(Screen.width / 12, Screen.height / 5, Screen.width, Screen.height / 5 + 10), coordinateText, style);
+        }
         private void OnGUI()
         {
+            if(
+                GameObjects.chrData.position.x != 0.0f &&
+                GameObjects.chrData.position.y != 0.0f
+            ) this.renderPosition();
             if (this.displayingWindow)
             {
 
                 
-                Rect windowRect = new Rect(10, 600, 400, 1000);
+                Rect windowRect = new Rect(0f, 0f,Screen.width/3, Screen.height/3);
 
                 windowRect = GUI.Window(31510001, windowRect, doWindow, "面板");
 
-                GUILayout.BeginArea(new Rect(10, 600, 400, 1000));
+                GUILayout.BeginArea(new Rect(0f, 0f,Screen.width/3, Screen.height/3));
 
                 GUILayout.Label("作弊");
                 Settings.Invulnerable = (GUILayout.Toggle(Settings.Invulnerable,"无敌"));
@@ -74,6 +108,11 @@ namespace NotArknightsMod
                     NAHelper.Warn("成功重置进度，休息一下吧。");
                 }
 
+                if (GUILayout.Button("挑战")) {
+                    NAHelper.Warn("欸嘿~");
+                    GameObject.Find("EnemyInformation").GetComponent<EnemyInformation>().automatic_challenge();
+                }
+
                 GUILayout.EndArea();
             }
         }
@@ -84,6 +123,11 @@ namespace NotArknightsMod
     }
     [HarmonyPatch(typeof(Amiya_Controller))]
     public static class Amiya_Controller_Patch {
+        [HarmonyPatch("Start")]
+        [HarmonyPostfix]
+        private static void Start(Amiya_Controller __instance) {
+            
+        } 
         [HarmonyPatch("DataReceive")]
         [HarmonyPostfix]
         private static void DataReceive(Amiya_Controller __instance)
@@ -102,8 +146,10 @@ namespace NotArknightsMod
 	    }
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
-        private static void Update_SuperArmor(Amiya_Controller __instance)
+        private static void Update(Amiya_Controller __instance)
 	    {
+            GameObjects.chrData.position = __instance.transform.localPosition;
+            // 以下为作弊
             if (!Settings.SuperArmor) return;
 		    if (__instance.currentState == "hurt"){
                 __instance.SetCharacterState("idle");
@@ -133,6 +179,15 @@ namespace NotArknightsMod
             NAHelper.ui = __instance.uiEffect;
         }
     }
+    [HarmonyPatch(typeof(ButtonControll))]
+    public static class ButtonControll_Patch {
+        [HarmonyPatch("Start")]
+        [HarmonyPostfix]
+        private static void Start(ButtonControll __instance)
+	    {
+            GameObjects.buttonControl = __instance;
+        }
+    }
     [HarmonyPatch(typeof(Bearmi_AI))]
     public static class Bearmi_AI_Patch {
         [HarmonyPatch("Start")]
@@ -145,11 +200,12 @@ namespace NotArknightsMod
             
         }
     }
-    [HarmonyPatch(typeof(Arkadia_AI))]
-    public static class Arkadia_AI_Patch {
+    /*
+    [HarmonyPatch(typeof(Nbkght_AI))]
+    public static class Nbkght_AI_Patch {
         [HarmonyPatch("DataReceive")]
         [HarmonyPostfix]
-        private static void DataRecieve(Arkadia_AI __instance)
+        private static void DataReceive(Nbkght_AI __instance)
 	    {
             if (Settings.HardMode) {
                 Traverse.Create(__instance).Field("max_HP").SetValue(((int)Traverse.Create(__instance).Field("max_HP").GetValue())*5);
@@ -161,7 +217,7 @@ namespace NotArknightsMod
         }
         [HarmonyPatch("Update")]
         [HarmonyPostfix]
-        private static void Update_SuperArmor(Arkadia_AI __instance)
+        private static void Update_SuperArmor(Nbkght_AI __instance)
 	    {
             if (!Settings.HardMode) return;
 		    if (__instance.currentState == "hurt"){
@@ -170,6 +226,7 @@ namespace NotArknightsMod
             }
 	    }
     }
+    */
     [HarmonyPatch(typeof(AxeSoldier_AI))]
     public static class AxeSoldier_Patch {
         [HarmonyPatch("DataReceive")]
@@ -179,8 +236,8 @@ namespace NotArknightsMod
             if (Settings.HardMode) {
                 Traverse.Create(__instance).Field("max_HP").SetValue(((int)Traverse.Create(__instance).Field("max_HP").GetValue())*5);
                 __instance.HP *= 5;
-                Traverse.Create(__instance).Field("attackSpeed").SetValue(((float)Traverse.Create(__instance).Field("attackSpeed").GetValue())*2);
-                Traverse.Create(__instance).Field("moveSpeed").SetValue(((float)Traverse.Create(__instance).Field("moveSpeed").GetValue())*2);
+                Traverse.Create(__instance).Field("attackSpeed").SetValue(((float)Traverse.Create(__instance).Field("attackSpeed").GetValue())*2.5);
+                Traverse.Create(__instance).Field("moveSpeed").SetValue(((float)Traverse.Create(__instance).Field("moveSpeed").GetValue())*6);
             }
             
         }
@@ -194,5 +251,36 @@ namespace NotArknightsMod
                 Traverse.Create(__instance).Field("moveLock").SetValue(false);      
             }
 	    }
+    }
+
+    // enemies
+    public class Enemies {
+        public Nbkght_AI[] nbkghts;
+        public void getEnemies() {
+            this.nbkghts = GameObject.FindObjectsOfType<Nbkght_AI>();
+        }
+        public void printEnemies() {
+            foreach (Nbkght_AI obj in this.nbkghts)
+            {
+                // 在这里处理找到的对象
+                GameObjects.notArknightsMod.log("Nbkght: " + obj.gameObject.name);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PlayerInformation))]
+    public static class PlayerInformation_Patch {
+        [HarmonyPatch("Start")]
+        [HarmonyPrefix]
+        private static void Start(PlayerInformation __instance) {
+            GameObjects.notArknightsMod.log("skadi bwb");
+        }
+        [HarmonyPatch("LoadCharacter")]
+        [HarmonyPrefix]
+        private static void LoadCharacter(PlayerInformation __instance)
+	    {
+            GameObjects.notArknightsMod.log("Skadi awa");
+            __instance.ChoiceCharacter = "Skadi";
+        }
     }
 }

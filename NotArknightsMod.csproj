@@ -21,7 +21,10 @@
   </ItemGroup>
   <ItemGroup>
   <Reference Include="Assembly-Csharp">
-    <HintPath>"Assembly-Csharp.dll</HintPath>
+    <HintPath>Assembly-Csharp.dll</HintPath>
+  </Reference>
+  <Reference Include="UnityEngine.AssetBundleModule">
+    <HintPath>UnityEngine.AssetBundleModule.dll</HintPath>
   </Reference>
 </ItemGroup>
 
